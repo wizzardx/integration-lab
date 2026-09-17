@@ -52,10 +52,26 @@ Run this in the same order every time; it moves from cheapest to most specific.
 6. **Only then blame trust:** `openssl verify -CAfile ... -untrusted ... leaf.crt`
    reproduces the verdict offline, with no server involved.
 
-## The one that matters
+## Verify codes
 
-8445 and 8446 produce a **near-identical** curl error, from opposite causes: one is a
-cert you should never trust, the other is a cert you should trust but can't reach the
-root of. Telling them apart from the client's error message alone is impossible — you
-have to look at the chain the server sent. That distinction is most of real-world TLS
-debugging, and it's why "just add the CA" is so often the wrong fix.
+| Code | Meaning |
+|---|---|
+| 0 | ok |
+| 10 | certificate has expired (compare against `date -u` -- suspect your own clock too) |
+| 19 | self-signed certificate in chain: chain is complete but ends at an anchor you don't trust |
+| 20 | unable to get local issuer certificate: you don't hold the issuer |
+| 21 | unable to verify the first certificate: the server sent too little chain |
+| 62 | hostname mismatch (only checked if you pass `-verify_hostname`) |
+
+## The two things that catch people out
+
+**The error text tracks what the server sent, not what is wrong.** The rogue leaf on
+8445 verifies with error 19 when its own self-signed root is supplied alongside it, and
+error 20 when it is checked alone -- same certificate, same fault, two messages. A rogue
+server that sent only its leaf would be indistinguishable from 8446's missing
+intermediate by message alone. Read the chain, not the message.
+
+**`s_client` does not check the hostname by default.** It validates the chain only, so it
+reports `Verify return code: 0 (ok)` for a cert whose SAN does not cover the name you
+asked for -- while curl refuses the same connection. Pass `-verify_hostname <name>` to
+ask the question curl asks. Chain validity and identity are two separate checks.
