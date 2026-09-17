@@ -35,11 +35,12 @@ Only these fields are kept; the rest of the payload is dropped deliberately.
 |---|---|---|---|
 | `created_at` | `created_at` | `timestamptz` | Event time at GitHub. Hypertable partition key. UTC (`Z`) in the API. |
 | `id` | `id` | `text` | Numeric-looking but a string in the API — kept as text, never arithmetic on it. |
+| `repo.name` | `repo` | `text` | `"owner/name"`. Flattened from a nested object. Taken from the event itself, not the repo we asked for, so a rename/redirect is recorded accurately. |
 | `type` | `type` | `text` | e.g. `PushEvent`. Not an enum: GitHub adds types without notice. |
 | `actor.login` | `actor` | `text` | Flattened from a nested object by a pydantic validator. |
 | `public` | `public` | `boolean` | Always true on this endpoint; kept so the column exists if we move to an authed feed. |
 | — | `ingested_at` | `timestamptz` | Ours, `default now()`. The gap between this and `created_at` is ingest lag. |
-| `payload`, `repo`, `org` | — | — | Dropped: shape varies per `type`, nothing downstream needs it yet. |
+| `payload`, `org` | — | — | Dropped: `payload`'s shape varies per `type`, nothing downstream needs it yet. |
 
 Source: GitHub webhook POST → table `webhook_deliveries`.
 
@@ -67,7 +68,7 @@ Source: GitHub webhook POST → table `webhook_deliveries`.
 ## Monitoring
 
 Dashboard panels: events/hour by type, ingest lag, top actors, recent webhook
-deliveries. One alert rule, `GitHub ingest stalled`: fires when fewer than 1 row
+deliveries, events per repo. One alert rule, `GitHub ingest stalled`: fires when fewer than 1 row
 landed in the last hour, `for: 5m`, `noDataState: Alerting`. Silence from a poller
 is indistinguishable from a quiet period unless something watches for it.
 

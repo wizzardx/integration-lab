@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS github_events (
     created_at   timestamptz NOT NULL,
     id           text        NOT NULL,
     type         text        NOT NULL,
+    repo         text        NOT NULL,   -- "owner/name", from the event's own repo.name
     actor        text        NOT NULL,
     public       boolean     NOT NULL,
     ingested_at  timestamptz NOT NULL DEFAULT now(),

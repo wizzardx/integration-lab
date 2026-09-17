@@ -42,6 +42,7 @@ class Event(BaseModel):
     id: str
     type: str
     created_at: datetime
+    repo: str
     actor: str
     public: bool
 
@@ -49,6 +50,13 @@ class Event(BaseModel):
     @classmethod
     def _login(cls, v):
         return v["login"] if isinstance(v, dict) else v
+
+    @field_validator("repo", mode="before")
+    @classmethod
+    def _repo_name(cls, v):
+        # Taken from the event, not from GH_REPO: the event is the source of truth,
+        # and a redirected/renamed repo would otherwise be logged under the old name.
+        return v["name"] if isinstance(v, dict) else v
 
 
 def retry_after(status: int, headers, attempt: int) -> float | None:
@@ -104,8 +112,8 @@ def events(repo: str):
 
 
 UPSERT = """
-    INSERT INTO github_events (created_at, id, type, actor, public)
-    VALUES (%s, %s, %s, %s, %s)
+    INSERT INTO github_events (created_at, id, type, repo, actor, public)
+    VALUES (%s, %s, %s, %s, %s, %s)
     ON CONFLICT (created_at, id) DO NOTHING
 """
 
@@ -113,7 +121,7 @@ UPSERT = """
 def store(conn, batch: list[Event]) -> int:
     """Insert a page, skipping events we already have. Returns rows actually new."""
     with conn.cursor() as cur:
-        cur.executemany(UPSERT, [(e.created_at, e.id, e.type, e.actor, e.public) for e in batch])
+        cur.executemany(UPSERT, [(e.created_at, e.id, e.type, e.repo, e.actor, e.public) for e in batch])
         return cur.rowcount
 
 
@@ -124,8 +132,10 @@ def demo() -> None:
     assert retry_after(429, {"retry-after": "7"}, 0) == 7.0
     assert retry_after(403, {"x-ratelimit-remaining": "0", "x-ratelimit-reset": str(time.time() + 30)}, 0) > 29
     e = Event.model_validate({"id": "1", "type": "PushEvent", "created_at": "2026-09-16T10:00:00Z",
-                              "actor": {"login": "dave"}, "public": True, "payload": {"ignored": 1}})
+                              "actor": {"login": "dave"}, "public": True, "payload": {"ignored": 1},
+                              "repo": {"id": 1, "name": "pydantic/pydantic"}})
     assert e.actor == "dave"
+    assert e.repo == "pydantic/pydantic"
     print("ok")
 
 

@@ -149,6 +149,33 @@
           }
         }
       ]
+    },
+    {
+      "type": "table",
+      "title": "Events per repo in range",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT repo, count(*) AS events, count(DISTINCT actor) AS actors, max(created_at) AS latest FROM github_events WHERE $__timeFilter(created_at) GROUP BY repo ORDER BY events DESC"
+        }
+      ]
     }
   ],
   "schemaVersion": 41
