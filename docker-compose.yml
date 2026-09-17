@@ -14,5 +14,20 @@ services:
       interval: 5s
       retries: 10
 
+  grafana:
+    image: grafana/grafana:latest
+    ports: ["3000:3000"]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"   # lab only: skips the login wall
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana:/var/lib/grafana
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   pgdata:
+  grafana:

@@ -1,0 +1,9 @@
+# Tells Grafana to load any dashboard JSON it finds in this directory on start.
+# foldersFromFilesStructure off: one flat folder is enough for a lab.
+apiVersion: 1
+providers:
+  - name: lab
+    type: file
+    updateIntervalSeconds: 10   # edit the JSON, refresh the browser, no restart
+    options:
+      path: /etc/grafana/provisioning/dashboards

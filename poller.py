@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import random
 import sys
 import time
 from datetime import datetime
@@ -59,7 +60,9 @@ def retry_after(status: int, headers, attempt: int) -> float | None:
             return float(ra)
         if reset := headers.get("x-ratelimit-reset"):
             return max(0.0, float(reset) - time.time()) + 1
-        return 2.0**attempt  # plain exponential backoff
+        # Exponential backoff with full jitter: without the random factor, every
+        # client that hit the same outage retries in lockstep and re-DDoSes the API.
+        return random.uniform(0, 2.0**attempt)
     return None
 
 
@@ -117,7 +120,7 @@ def store(conn, batch: list[Event]) -> int:
 def demo() -> None:
     """Offline self-check of the two bits of logic that are easy to get wrong."""
     assert retry_after(404, {}, 0) is None
-    assert retry_after(500, {}, 3) == 8.0
+    assert 0 <= retry_after(500, {}, 3) <= 8.0   # jittered, so a range not a value
     assert retry_after(429, {"retry-after": "7"}, 0) == 7.0
     assert retry_after(403, {"x-ratelimit-remaining": "0", "x-ratelimit-reset": str(time.time() + 30)}, 0) > 29
     e = Event.model_validate({"id": "1", "type": "PushEvent", "created_at": "2026-09-16T10:00:00Z",

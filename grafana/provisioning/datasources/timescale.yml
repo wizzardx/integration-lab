@@ -1,0 +1,18 @@
+# Provisioning = the datasource is defined in a file, not clicked into the UI.
+# Means a fresh "docker compose up" comes back wired up, and the config is in git.
+apiVersion: 1
+datasources:
+  - name: Timescale
+    uid: timescale        # fixed uid: the dashboard and alert rule reference it by uid
+    type: postgres
+    url: db:5432          # service name on the compose network, not localhost
+    user: lab
+    secureJsonData:
+      password: lab
+    jsonData:
+      database: lab       # must live under jsonData: the top-level 'database' field is
+                          # legacy, honoured by the backend but ignored by the query editor
+      sslmode: disable    # same-network container traffic; TLS is Tier 2's problem
+      postgresVersion: 1600
+      timescaledb: true   # unlocks $__timeGroup -> time_bucket() in generated SQL
+    isDefault: true

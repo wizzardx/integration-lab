@@ -1,0 +1,42 @@
+# One alert rule, provisioned. The question it answers is the one that matters for
+# any integration: "is data still arriving?" -- silence from a poller looks
+# identical to a healthy quiet period unless something is watching for it.
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: ingest
+    folder: Integration Lab
+    interval: 1m
+    rules:
+      - uid: github-ingest-stalled
+        title: GitHub ingest stalled
+        condition: C
+        for: 5m                 # must stay bad for 5m before firing: rides out a blip
+        noDataState: Alerting   # no rows at all is a failure, not "unknown"
+        execErrState: Error
+        annotations:
+          summary: No GitHub events ingested in the last hour -- poller may be dead.
+        data:
+          # A: the raw number. Absolute SQL window, so the dashboard time picker
+          # can't accidentally change what the alert means.
+          - refId: A
+            datasourceUid: timescale
+            relativeTimeRange: { from: 3600, to: 0 }
+            model:
+              refId: A
+              format: table
+              rawQuery: true
+              rawSql: "SELECT now() AS time, count(*)::float AS value FROM github_events WHERE ingested_at > now() - interval '1 hour'"
+          # B: collapse the series to one value (server-side expression, no DS).
+          - refId: B
+            datasourceUid: __expr__
+            model: { refId: B, type: reduce, reducer: last, expression: A }
+          # C: the condition itself -- fewer than 1 new row in the window.
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: lt, params: [1] }
