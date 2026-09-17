@@ -1,0 +1,8 @@
+# Separate stack from the Tier 1 pipeline: different problem, different lifecycle.
+services:
+  tls:
+    image: nginx:alpine
+    ports: ["8443:8443", "8444:8444", "8445:8445", "8446:8446"]
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/certs:ro
