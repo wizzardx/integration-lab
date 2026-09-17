@@ -1,0 +1,6 @@
+# Based on nginx:alpine only because that layer is already cached locally -- nginx
+# itself is unused here. The point is the toolbox: ip, ss, dig, curl, tcpdump.
+FROM nginx:alpine
+RUN apk add --no-cache curl bind-tools iproute2 tcpdump
+ENTRYPOINT []
+CMD ["sleep", "infinity"]

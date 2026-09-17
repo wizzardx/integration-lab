@@ -1,0 +1,29 @@
+# Nothing is published to the host: every test runs from inside a container, the
+# way you'd diagnose on a customer's box. Each service breaks one different layer.
+services:
+  # Baseline. Listens on all interfaces, port 80, resolvable as "good".
+  good:
+    image: nginx:alpine
+    volumes: [./conf/good.conf:/etc/nginx/nginx.conf:ro]
+
+  # Service is running and healthy -- but bound to loopback, so nothing outside
+  # the container can reach it. Works from inside, refused from anywhere else.
+  bound-local:
+    image: nginx:alpine
+    volumes: [./conf/bound-local.conf:/etc/nginx/nginx.conf:ro]
+
+  # Running and listening on all interfaces, just not on the port you expect.
+  wrongport:
+    image: nginx:alpine
+    volumes: [./conf/wrongport.conf:/etc/nginx/nginx.conf:ro]
+
+  # Your toolbox. "blackhole" resolves to an unroutable TEST-NET-1 address, so
+  # packets to it vanish rather than being refused -- timeout, not RST.
+  diag:
+    build: {context: ., dockerfile: Dockerfile.diag}
+    extra_hosts: ["blackhole:192.0.2.1"]
+
+  # Same toolbox, but pointed at a DNS server that does not exist.
+  diag-baddns:
+    build: {context: ., dockerfile: Dockerfile.diag}
+    dns: ["192.0.2.53"]
